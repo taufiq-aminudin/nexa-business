@@ -79,19 +79,19 @@ export function db(): DatabaseStore {
   if (dbStore) return dbStore;
 
   const file = config.dataPath;
-  const dir = path.dirname(file);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  if (!fs.existsSync(file)) {
-    dbStore = blankStore();
-    seedDefaults();
-    saveDb(dbStore);
-    return dbStore;
-  }
-
   try {
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    if (!fs.existsSync(file)) {
+      dbStore = blankStore();
+      seedDefaults();
+      saveDb(dbStore);
+      return dbStore;
+    }
+
     const content = fs.readFileSync(file, 'utf-8');
     const parsed = JSON.parse(content);
     const store = blankStore();
@@ -105,10 +105,9 @@ export function db(): DatabaseStore {
     }
     return dbStore;
   } catch (e) {
-    console.warn('Could not read or parse data file, initializing blank store');
+    console.warn('Could not read or parse data file, initializing in-memory store:', e);
     dbStore = blankStore();
     seedDefaults();
-    saveDb(dbStore);
     return dbStore;
   }
 }
