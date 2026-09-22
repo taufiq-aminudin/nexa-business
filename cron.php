@@ -1,0 +1,3 @@
+<?php
+require __DIR__.'/src/bootstrap.php';
+$rows=db_where('leads',fn($r)=>!empty($r['next_follow_up_at'])&&strtotime($r['next_follow_up_at'])<=time()&&!in_array($r['status']??'', ['WON','LOST','UNSUBSCRIBED'],true));$count=0;foreach(array_slice($rows,0,100) as $lead){db_insert('tasks',['title'=>'AI follow-up: lead #'.$lead['id'],'due_at'=>date('Y-m-d H:i:s'),'status'=>'OPEN','priority'=>'HIGH','entity_type'=>'lead','entity_id'=>$lead['id'],'notes'=>'Review reply/engagement and send next approved step.']);db_update('leads',(int)$lead['id'],fn($x)=>$x+['next_follow_up_at'=>date('Y-m-d H:i:s',strtotime('+3 days'))]);audit('followup.task_created','lead',(int)$lead['id']);$count++;}echo "Processed {$count} follow-up tasks\n";

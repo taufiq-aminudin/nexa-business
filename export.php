@@ -1,0 +1,1 @@
+<?php require __DIR__.'/src/bootstrap.php'; header('Content-Type: application/json; charset=utf-8'); echo json_encode(['exported_at'=>date('c'),'data'=>db()],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
