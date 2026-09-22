@@ -1,6 +1,6 @@
 {
   "name": "NEXA Business AI",
-  "description": "AI Business Acquisition & Automation Platform for CRM, mission orchestration, and outreach generation.",
+  "description": "AI Business Acquisition & Automation Platform for CRM, mission orchestration, and outreach generation with Firebase Auth, Cloud Firestore, and Google Search Grounding.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -12,6 +12,7 @@ import {
   RecordItem,
 } from './db.js';
 import { config } from './config.js';
+import { getFirebaseClientScript } from './firebase.js';
 
 export function escapeHtml(v: any): string {
   if (v === null || v === undefined) return '';
@@ -214,33 +215,73 @@ export function renderPageContent(page: string, csrfToken: string): string {
     let listHtml = '';
     for (const r of dbSortDesc(dbAll('missions'))) {
       const isCompleted = r.status === 'COMPLETED';
-      listHtml += `<div class="list-item" id="mission-${r.id}">
-        <div>
-          <b>${escapeHtml(r.title)}</b>
-          <div class="muted small">${escapeHtml(r.instruction)}</div>
-          <span class="badge">${escapeHtml(r.status)}</span>
+      let detailsHtml = '';
+      if (isCompleted) {
+        let parsed: any = {};
+        try {
+          parsed = JSON.parse(r.result_json || '{}');
+        } catch {
+          parsed = { result: r.result_json };
+        }
+        let sourcesHtml = '';
+        if (parsed.sources && parsed.sources.length > 0) {
+          sourcesHtml = `<div class="grounding-sources" style="margin-top:12px;padding:12px;background:#0d1829;border:1px solid #1e355b;border-radius:8px">
+            <div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span>🌐</span> VERIFIED GOOGLE SEARCH SOURCES:
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              ${parsed.sources.map((s: any) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="badge" style="color:#93c5fd;text-decoration:none;border-color:#2a4365;background:#101f38" title="${escapeHtml(s.title || s.url)}">${escapeHtml(s.title || s.url)} ↗</a>`).join('')}
+            </div>
+          </div>`;
+        }
+        if (parsed.searchQueries && parsed.searchQueries.length > 0) {
+          sourcesHtml += `<div style="margin-top:8px;font-size:11px;color:#94a3b8">Search queries executed: ${parsed.searchQueries.map((q: string) => `<span class="pill" style="font-size:11px;padding:2px 8px;margin-right:4px">${escapeHtml(q)}</span>`).join('')}</div>`;
+        }
+
+        detailsHtml = `<details style="margin-top:10px" open>
+          <summary style="cursor:pointer;color:#7c5cff;font-weight:600">View Execution Plan &amp; Intelligence</summary>
+          <div style="margin-top:8px;padding:14px;background:#0c1425;border:1px solid #1f2d48;border-radius:10px;white-space:pre-wrap;font-size:13px;line-height:1.6">${escapeHtml(parsed.result || r.result_json)}</div>
+          ${sourcesHtml}
+        </details>`;
+      }
+
+      listHtml += `<div class="list-item" id="mission-${r.id}" style="display:block;padding:16px 0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div>
+            <b style="font-size:15px">${escapeHtml(r.title)}</b>
+            <div class="muted small" style="margin:4px 0">${escapeHtml(r.instruction)}</div>
+            <span class="badge">${escapeHtml(r.status)}</span>
+            <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e;margin-left:6px">🌐 Search Grounded</span>
+          </div>
+          <div>
+            ${
+              !isCompleted
+                ? `<form method="post" action="?action=run_mission" class="inline">
+                    ${hiddenCsrf(csrfToken)}
+                    <input type="hidden" name="id" value="${escapeHtml(r.id)}">
+                    <button class="button primary" id="btn-run-mission-${r.id}">Run with Google Search</button>
+                  </form>`
+                : ''
+            }
+          </div>
         </div>
-        <div>
-          ${
-            !isCompleted
-              ? `<form method="post" action="?action=run_mission" class="inline">
-                  ${hiddenCsrf(csrfToken)}
-                  <input type="hidden" name="id" value="${escapeHtml(r.id)}">
-                  <button class="button" id="btn-run-mission-${r.id}">Run AI</button>
-                </form>`
-              : `<details><summary>Result</summary><pre>${escapeHtml(r.result_json)}</pre></details>`
-          }
-        </div>
+        ${detailsHtml}
       </div>`;
     }
 
     return `<div class="panel" id="panel-create-mission">
-      <h2>Create AI Mission</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2>Create AI Mission</h2>
+        <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e">🌐 Gemini 3.5 Flash · Google Search Grounded</span>
+      </div>
+      <p class="muted small" style="margin-top:-6px;margin-bottom:14px">
+        Missions are executed with real-time web intelligence via Gemini 3.5 Flash and Google Search Grounding to discover fresh market signals, company intelligence, and verified lead opportunities.
+      </p>
       <form method="post" action="?action=create_mission">
         ${hiddenCsrf(csrfToken)}
-        <input name="title" placeholder="Mission title" required>
-        <textarea name="instruction" placeholder="Describe what the AI business development team should accomplish..." required></textarea>
-        <button class="button primary" id="btn-submit-mission">Create</button>
+        <input name="title" placeholder="Mission title (e.g. Research B2B Logistics Software Buyers in Singapore)" required>
+        <textarea name="instruction" placeholder="Describe the mission goals, target industry, criteria, and research questions..." required></textarea>
+        <button class="button primary" id="btn-submit-mission">Create Mission</button>
       </form>
     </div>
     <div class="panel" id="panel-mission-queue">
@@ -667,6 +708,9 @@ export function renderAppLayout(params: {
         ${navHtml}
       </nav>
       <div class="side-foot">
+        <div style="margin-bottom:6px">
+          <span class="badge" style="background:#221b10;color:#ffb84d;border-color:#5c3f15;font-size:10px">🔥 Firestore Active</span>
+        </div>
         Signed in as <b>${escapeHtml(userEmail || 'admin')}</b> · <a href="?page=logout" class="muted" id="link-logout">Logout</a>
       </div>
     </aside>
@@ -676,12 +720,17 @@ export function renderAppLayout(params: {
           <div class="eyebrow">AI BUSINESS OPERATING SYSTEM</div>
           <h1>${escapeHtml(pageTitle)}</h1>
         </div>
-        <div class="pill">${escapeHtml(dateStr)}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e">🌐 Gemini 3.5 Flash · Search Grounded</span>
+          <span class="badge" style="background:#221b10;color:#ffb84d;border-color:#5c3f15">🔥 Firebase Connected</span>
+          <div class="pill">${escapeHtml(dateStr)}</div>
+        </div>
       </header>
       ${flashHtml}
       ${renderPageContent(page, csrfToken)}
     </main>
   </div>
+  ${getFirebaseClientScript()}
 </body>
 </html>`;
 }
@@ -703,16 +752,38 @@ export function renderLoginLayout(flashes: Array<[string, string]>, csrfToken: s
 <body class="login-body">
   <div class="login-card" id="login-card">
     <div class="brand big">NEXA <span>Business AI</span></div>
-    <p class="muted">AI Business Acquisition & Automation Platform</p>
+    <p class="muted">AI Business Acquisition &amp; Automation Platform</p>
+    
+    <div style="margin: 18px 0;">
+      <button type="button" class="button full google-btn" id="btn-google-signin" style="background:#ffffff;color:#1f2937;border:1px solid #d1d5db;font-weight:600;padding:11px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer">
+        <svg width="18" height="18" viewBox="0 0 18 18">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.347 2.825.957 4.039l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+        </svg>
+        Sign in with Google
+      </button>
+      <div style="display:flex;align-items:center;margin:18px 0;color:var(--muted);font-size:11px">
+        <div style="flex:1;height:1px;background:var(--line)"></div>
+        <div style="padding:0 10px;letter-spacing:1px">OR WITH EMAIL</div>
+        <div style="flex:1;height:1px;background:var(--line)"></div>
+      </div>
+    </div>
+
     ${flashHtml}
     <form method="post" action="?action=login" id="login-form">
       ${hiddenCsrf(csrfToken)}
       <input name="email" type="email" placeholder="Admin email" required value="${escapeHtml(config.adminEmail)}">
       <input name="password" type="password" placeholder="Password" required value="${escapeHtml(config.adminPassword)}">
-      <button class="button primary full" id="btn-login-submit">Sign in</button>
+      <button class="button primary full" id="btn-login-submit">Sign in with Email</button>
     </form>
-    <div class="tip small">Demo default: admin@example.com / ChangeMe123! — set ADMIN_EMAIL and ADMIN_PASSWORD in production.</div>
+    <div class="tip small" style="margin-top:16px">
+      🔥 <b>Firebase Auth &amp; Cloud Firestore connected</b>.<br>
+      Use Google Sign-in to authenticate securely or sign in with admin credentials.
+    </div>
   </div>
+  ${getFirebaseClientScript()}
 </body>
 </html>`;
 }

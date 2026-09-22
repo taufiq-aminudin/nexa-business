@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile authenticated via Firebase Auth / Google Sign-in",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User avatar URL" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" }
+      },
+      "required": ["id", "email"]
+    },
+    "Mission": {
+      "title": "Mission",
+      "description": "Autonomous AI business mission with search-grounded execution",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Mission ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "title": { "type": "string", "description": "Mission title" },
+        "instruction": { "type": "string", "description": "Mission prompt or instruction" },
+        "status": { "type": "string", "enum": ["DRAFT", "RUNNING", "COMPLETED", "FAILED"] },
+        "result": { "type": "string", "description": "AI analysis and search grounded findings" },
+        "sources": { "type": "string", "description": "Grounding citations or web sources" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "title"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "B2B or real estate lead in pipeline",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Lead ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "companyName": { "type": "string", "description": "Company or lead name" },
+        "contactName": { "type": "string", "description": "Contact person name" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "status": { "type": "string", "enum": ["NEW", "RESEARCHED", "CONTACTED", "QUALIFIED", "PROPOSAL", "WON", "LOST"] },
+        "value": { "type": "number", "description": "Estimated deal value in USD" },
+        "signal": { "type": "string", "description": "Buying signal or intent trigger" },
+        "score": { "type": "number", "description": "Lead score from 0 to 100" },
+        "notes": { "type": "string", "description": "Internal lead notes" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "companyName", "status"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Researched prospect or client account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Company ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "description": "Company name" },
+        "industry": { "type": "string", "description": "Industry sector" },
+        "location": { "type": "string", "description": "Location / Headquarters" },
+        "website": { "type": "string", "description": "Website URL" },
+        "description": { "type": "string", "description": "Company profile summary" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "name"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Generated outreach email or communication",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Message ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "leadId": { "type": "string", "description": "Associated lead ID" },
+        "subject": { "type": "string", "description": "Email subject line" },
+        "body": { "type": "string", "description": "Email body content" },
+        "channel": { "type": "string", "description": "Channel e.g. email, linkedin, whatsapp" },
+        "status": { "type": "string", "enum": ["DRAFT", "SENT", "SCHEDULED"] },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "subject", "body"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile records indexed by auth UID"
+    },
+    "/users/{userId}/missions/{missionId}": {
+      "schema": "Mission",
+      "description": "Autonomous AI missions belonging to user"
+    },
+    "/users/{userId}/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Sales leads tracked by user"
+    },
+    "/users/{userId}/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Companies and target accounts"
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Outreach drafts and communications"
+    }
+  }
+}

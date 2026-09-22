@@ -87,7 +87,25 @@ function verifyCsrf(req: Request, res: Response): boolean {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: config.appName, demoMode: config.demoMode });
+  res.json({ status: 'ok', app: config.appName, demoMode: config.demoMode, firebase: true });
+});
+
+// Google Sign-in with Firebase Auth session sync
+app.post('/api/auth/google', (req: Request, res: Response) => {
+  const { uid, email, displayName, photoURL } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: 'Missing email' });
+  }
+
+  req.session.authenticated = true;
+  req.session.email = email;
+  (req.session as any).uid = uid || 'google-user';
+  (req.session as any).displayName = displayName || email;
+  (req.session as any).photoURL = photoURL || '';
+
+  res.cookie('nexa_auth', '1', { httpOnly: true, sameSite: 'lax', maxAge: 86400000 });
+  res.cookie('nexa_user_email', email, { sameSite: 'lax', maxAge: 86400000 });
+  res.json({ ok: true, email });
 });
 
 // JSON export endpoint (matches export.php)
@@ -199,8 +217,8 @@ app.post('/', upload.single('csv') as any, async (req: Request, res: Response) =
       if (!m) return res.redirect('/?page=missions');
 
       const systemPrompt =
-        'You are the NEXA Orchestrator. Convert a business mission into a structured execution plan. Respect source permissions and never propose unauthorized scraping.';
-      const r = await aiChat(systemPrompt, m.instruction || '');
+        'You are the NEXA Business Intelligence & Outreach Orchestrator with live Google Search grounding. Convert the business mission into a structured execution plan grounded in verified, real-time market data. Discover active industry signals, relevant companies, executive profiles, and recommended actions.';
+      const r = await aiChat(systemPrompt, m.instruction || '', { useSearchGrounding: true });
 
       dbUpdate('missions', id, (x) => ({
         ...x,
@@ -208,10 +226,12 @@ app.post('/', upload.single('csv') as any, async (req: Request, res: Response) =
         result_json: JSON.stringify({
           result: r.text,
           demo: r.demo ?? false,
+          sources: r.sources || [],
+          searchQueries: r.searchQueries || [],
         }),
       }));
       audit(actor, 'mission.executed', 'mission', id, r);
-      flash(req, 'success', 'Mission executed.');
+      flash(req, 'success', 'Mission executed with Google Search Grounding.');
       return res.redirect('/?page=missions');
     }
 
@@ -345,17 +365,17 @@ app.post('/', upload.single('csv') as any, async (req: Request, res: Response) =
       const lead = findLeadJoined(leadId);
       if (!lead) return res.redirect('/?page=leads');
 
-      const text = await aiGenerateOutreach(lead);
+      const outreachResult = await aiGenerateOutreach(lead);
       const id = dbInsert('messages', {
         lead_id: lead.id,
         direction: 'outbound',
         channel: 'email',
         subject: 'Partnership opportunity for ' + lead.company_name,
-        body: text,
+        body: outreachResult.text,
         status: 'DRAFT',
       });
-      audit(actor, 'outreach.generated', 'message', id, { lead_id: lead.id });
-      flash(req, 'success', 'Outreach draft generated.');
+      audit(actor, 'outreach.generated', 'message', id, { lead_id: lead.id, sources: outreachResult.sources });
+      flash(req, 'success', 'Outreach draft generated with Search Grounding.');
       return res.redirect('/?page=inbox');
     }
 

@@ -41,9 +41,26 @@ export default {
     // Health check
     if (pathname === '/api/health') {
       return new Response(
-        JSON.stringify({ status: 'ok', app: config.appName, demoMode: config.demoMode }),
+        JSON.stringify({ status: 'ok', app: config.appName, demoMode: config.demoMode, firebase: true }),
         { headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Google Sign-in with Firebase Auth session sync
+    if (pathname === '/api/auth/google' && request.method === 'POST') {
+      let body: any = {};
+      try {
+        body = await request.json();
+      } catch {
+        body = {};
+      }
+      const email = body.email || config.adminEmail;
+      return new Response(JSON.stringify({ ok: true, email }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': `nexa_auth=1; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+        },
+      });
     }
 
     // Export endpoint
@@ -167,12 +184,17 @@ export default {
         const m = dbFind('missions', id);
         if (m) {
           const systemPrompt =
-            'You are the NEXA Orchestrator. Convert a business mission into a structured execution plan. Respect source permissions and never propose unauthorized scraping.';
-          const r = await aiChat(systemPrompt, m.instruction || '');
+            'You are the NEXA Business Intelligence & Outreach Orchestrator with live Google Search grounding. Convert the business mission into a structured execution plan grounded in verified, real-time market data. Discover active industry signals, relevant companies, executive profiles, and recommended actions.';
+          const r = await aiChat(systemPrompt, m.instruction || '', { useSearchGrounding: true });
           dbUpdate('missions', id, (x) => ({
             ...x,
             status: 'COMPLETED',
-            result_json: JSON.stringify({ result: r.text, demo: r.demo ?? false }),
+            result_json: JSON.stringify({
+              result: r.text,
+              demo: r.demo ?? false,
+              sources: r.sources || [],
+              searchQueries: r.searchQueries || [],
+            }),
           }));
           audit(actor, 'mission.executed', 'mission', id, r);
         }
@@ -231,16 +253,16 @@ export default {
         const leadId = Number(body.id || 0);
         const lead = findLeadJoined(leadId);
         if (lead) {
-          const text = await aiGenerateOutreach(lead);
+          const outreachResult = await aiGenerateOutreach(lead);
           const id = dbInsert('messages', {
             lead_id: lead.id,
             direction: 'outbound',
             channel: 'email',
             subject: 'Partnership opportunity for ' + lead.company_name,
-            body: text,
+            body: outreachResult.text,
             status: 'DRAFT',
           });
-          audit(actor, 'outreach.generated', 'message', id, { lead_id: lead.id });
+          audit(actor, 'outreach.generated', 'message', id, { lead_id: lead.id, sources: outreachResult.sources });
         }
         return new Response(null, { status: 302, headers: { Location: '/?page=inbox' } });
       }
