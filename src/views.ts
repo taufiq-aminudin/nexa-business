@@ -272,10 +272,10 @@ export function renderPageContent(page: string, csrfToken: string): string {
     return `<div class="panel" id="panel-create-mission">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h2>Create AI Mission</h2>
-        <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e">🌐 Gemini 3.5 Flash · Google Search Grounded</span>
+        <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e">🌐 Gemini 3.6 Flash · Google Search Grounded</span>
       </div>
       <p class="muted small" style="margin-top:-6px;margin-bottom:14px">
-        Missions are executed with real-time web intelligence via Gemini 3.5 Flash and Google Search Grounding to discover fresh market signals, company intelligence, and verified lead opportunities.
+        Missions are executed with real-time web intelligence via Gemini 3.6 Flash and Google Search Grounding to discover fresh market signals, company intelligence, and verified lead opportunities.
       </p>
       <form method="post" action="?action=create_mission">
         ${hiddenCsrf(csrfToken)}
@@ -721,7 +721,7 @@ export function renderAppLayout(params: {
           <h1>${escapeHtml(pageTitle)}</h1>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e">🌐 Gemini 3.5 Flash · Search Grounded</span>
+          <span class="badge" style="background:#132838;color:#70c4ff;border-color:#204c6e">🌐 Gemini 3.6 Flash · Search Grounded</span>
           <span class="badge" style="background:#221b10;color:#ffb84d;border-color:#5c3f15">🔥 Firebase Connected</span>
           <div class="pill">${escapeHtml(dateStr)}</div>
         </div>

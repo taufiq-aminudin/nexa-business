@@ -77,7 +77,7 @@ function pullFlashes(req: Request): Array<[string, string]> {
 }
 
 function verifyCsrf(req: Request, res: Response): boolean {
-  const token = req.body?.csrf || req.headers['x-csrf-token'];
+  const token = req.body?.csrf || req.body?._csrf || req.headers['x-csrf-token'];
   if (!token || token !== req.session.csrf) {
     res.status(419).send('CSRF validation failed');
     return false;

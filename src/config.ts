@@ -25,10 +25,10 @@ export const config: AppConfig = {
   timezone: process.env.APP_TIMEZONE || 'Asia/Jakarta',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   openaiModel: process.env.OPENAI_MODEL || 'gpt-5-mini',
-  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.API_KEY || '',
   fromEmail: process.env.MAIL_FROM || 'noreply@example.com',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@example.com',
   adminPassword: process.env.ADMIN_PASSWORD || 'ChangeMe123!',
-  demoMode: (process.env.DEMO_MODE ?? 'true') !== 'false',
+  demoMode: false,
   port: 3000,
 };
