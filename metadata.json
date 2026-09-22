@@ -1,0 +1,6 @@
+{
+  "name": "NEXA Business AI",
+  "description": "AI Business Acquisition & Automation Platform for CRM, mission orchestration, and outreach generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
