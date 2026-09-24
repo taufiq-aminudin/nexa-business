@@ -41,7 +41,7 @@
         "contactName": { "type": "string", "description": "Contact person name" },
         "email": { "type": "string", "description": "Email address" },
         "phone": { "type": "string", "description": "Phone number" },
-        "status": { "type": "string", "enum": ["NEW", "RESEARCHED", "CONTACTED", "QUALIFIED", "PROPOSAL", "WON", "LOST"] },
+        "status": { "type": "string", "enum": ["NEW", "IN_PROGRESS", "CONVERTED", "RESEARCHED", "CONTACTED", "QUALIFIED", "PROPOSAL", "WON", "LOST"] },
         "value": { "type": "number", "description": "Estimated deal value in USD" },
         "signal": { "type": "string", "description": "Buying signal or intent trigger" },
         "score": { "type": "number", "description": "Lead score from 0 to 100" },

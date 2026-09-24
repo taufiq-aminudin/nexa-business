@@ -245,6 +245,45 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         gap: 12px;
         margin-bottom: 16px;
       }
+      .crm-filter-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .crm-dropdown-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #0d1525;
+        border: 1px solid #263654;
+        border-radius: 8px;
+        padding: 3px 10px;
+      }
+      .crm-filter-label {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+      .crm-status-filter-select {
+        background: transparent;
+        color: #60a5fa;
+        font-weight: 600;
+        border: none;
+        outline: none;
+        padding: 4px 6px;
+        font-size: 12px;
+        cursor: pointer;
+        margin: 0;
+      }
+      .crm-status-filter-select option {
+        background: #0f172a;
+        color: #f1f5f9;
+        font-weight: 500;
+      }
       .crm-search-box {
         display: flex;
         align-items: center;
@@ -252,7 +291,27 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         border: 1px solid #263654;
         border-radius: 8px;
         padding: 4px 10px;
-        width: min(320px, 100%);
+        width: min(280px, 100%);
+      }
+      .crm-badge-new {
+        background: rgba(56, 189, 248, 0.15) !important;
+        color: #38bdf8 !important;
+        border-color: rgba(56, 189, 248, 0.35) !important;
+      }
+      .crm-badge-progress {
+        background: rgba(251, 191, 36, 0.15) !important;
+        color: #fbbf24 !important;
+        border-color: rgba(251, 191, 36, 0.35) !important;
+      }
+      .crm-badge-converted {
+        background: rgba(52, 211, 153, 0.15) !important;
+        color: #34d399 !important;
+        border-color: rgba(52, 211, 153, 0.35) !important;
+      }
+      .crm-badge-lost {
+        background: rgba(248, 113, 113, 0.15) !important;
+        color: #f87171 !important;
+        border-color: rgba(248, 113, 113, 0.35) !important;
       }
       .crm-search-box input {
         background: transparent;
@@ -452,7 +511,16 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           <h3 style="margin:0 0 4px;font-size:16px;color:#f8fafc">Recent Leads from Firestore</h3>
           <span style="font-size:12px;color:#94a3b8">Real-time synchronized records from Cloud Firestore collection</span>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div class="crm-filter-group">
+          <div class="crm-dropdown-wrap">
+            <label for="crm-status-filter-dropdown" class="crm-filter-label">Filter Status:</label>
+            <select id="crm-status-filter-dropdown" class="crm-status-filter-select" aria-label="Filter leads by status">
+              <option value="ALL">All Statuses</option>
+              <option value="NEW">New</option>
+              <option value="IN_PROGRESS">In-Progress</option>
+              <option value="CONVERTED">Converted</option>
+            </select>
+          </div>
           <div class="crm-search-box">
             <span>🔍</span>
             <input type="text" id="crm-search-input" placeholder="Search company, contact, signal...">
@@ -522,13 +590,15 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
             <div>
               <label class="small muted">Pipeline Status</label>
               <select id="lead-form-status" name="status">
-                <option value="NEW">NEW</option>
-                <option value="RESEARCHED">RESEARCHED</option>
-                <option value="CONTACTED">CONTACTED</option>
-                <option value="QUALIFIED" selected>QUALIFIED</option>
-                <option value="PROPOSAL">PROPOSAL</option>
-                <option value="WON">WON</option>
-                <option value="LOST">LOST</option>
+                <option value="NEW" selected>New</option>
+                <option value="IN_PROGRESS">In-Progress</option>
+                <option value="CONVERTED">Converted</option>
+                <option value="QUALIFIED">Qualified</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="PROPOSAL">Proposal</option>
+                <option value="RESEARCHED">Researched</option>
+                <option value="WON">Won</option>
+                <option value="LOST">Lost</option>
               </select>
             </div>
           </div>
@@ -583,11 +653,13 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
 
       const { auth, db } = window._nexaFirebase;
       let activeStageFilter = 'ALL';
+      let activeStatusDropdownFilter = 'ALL';
       let currentLeads = [];
       let unsubscribeSnapshot = null;
 
       const tbody = document.getElementById('crm-leads-tbody');
       const searchInput = document.getElementById('crm-search-input');
+      const statusDropdown = document.getElementById('crm-status-filter-dropdown');
       const syncText = document.getElementById('crm-sync-text');
       const modal = document.getElementById('crm-lead-modal');
 
@@ -676,6 +748,10 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         let wonCount = 0;
         let totalScore = 0;
 
+        let newCount = 0;
+        let inProgressCount = 0;
+        let convertedCount = 0;
+
         const counts = {
           ALL: total,
           NEW: 0,
@@ -696,8 +772,19 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           const st = l.status || 'NEW';
           if (counts[st] !== undefined) counts[st]++;
 
+          if (st === 'NEW') {
+            newCount++;
+          } else if (st === 'CONVERTED' || st === 'WON') {
+            convertedCount++;
+          } else if (st === 'LOST') {
+            // Closed lost
+          } else {
+            // In-Progress
+            inProgressCount++;
+          }
+
           if (score >= 75 || st === 'QUALIFIED') qualifiedCount++;
-          if (st === 'WON') {
+          if (st === 'WON' || st === 'CONVERTED') {
             wonVal += val;
             wonCount++;
           }
@@ -726,6 +813,18 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           const el = document.getElementById('count-' + st.toLowerCase());
           if (el) el.innerText = cnt;
         }
+
+        // Dynamically update dropdown filter options with live lead counts
+        if (statusDropdown) {
+          const optAll = statusDropdown.querySelector('option[value="ALL"]');
+          const optNew = statusDropdown.querySelector('option[value="NEW"]');
+          const optProgress = statusDropdown.querySelector('option[value="IN_PROGRESS"]');
+          const optConverted = statusDropdown.querySelector('option[value="CONVERTED"]');
+          if (optAll) optAll.textContent = 'All Statuses (' + total + ')';
+          if (optNew) optNew.textContent = 'New (' + newCount + ')';
+          if (optProgress) optProgress.textContent = 'In-Progress (' + inProgressCount + ')';
+          if (optConverted) optConverted.textContent = 'Converted (' + convertedCount + ')';
+        }
       }
 
       // Render Leads Table
@@ -733,7 +832,20 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         const queryTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
         let filtered = currentLeads;
 
-        if (activeStageFilter !== 'ALL') {
+        // Apply dropdown filter (New, In-Progress, Converted, All)
+        if (activeStatusDropdownFilter === 'NEW') {
+          filtered = filtered.filter(l => (l.status || 'NEW') === 'NEW');
+        } else if (activeStatusDropdownFilter === 'IN_PROGRESS') {
+          filtered = filtered.filter(l => {
+            const s = l.status || 'NEW';
+            return s === 'IN_PROGRESS' || ['RESEARCHED', 'CONTACTED', 'QUALIFIED', 'PROPOSAL'].includes(s);
+          });
+        } else if (activeStatusDropdownFilter === 'CONVERTED') {
+          filtered = filtered.filter(l => {
+            const s = l.status || 'NEW';
+            return s === 'CONVERTED' || s === 'WON';
+          });
+        } else if (activeStageFilter !== 'ALL') {
           filtered = filtered.filter(l => (l.status || 'NEW') === activeStageFilter);
         }
 
@@ -747,14 +859,35 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         }
 
         if (filtered.length === 0) {
+          let filterLabel = 'this view';
+          if (activeStatusDropdownFilter === 'NEW') filterLabel = 'New';
+          else if (activeStatusDropdownFilter === 'IN_PROGRESS') filterLabel = 'In-Progress';
+          else if (activeStatusDropdownFilter === 'CONVERTED') filterLabel = 'Converted';
+          else if (activeStageFilter !== 'ALL') filterLabel = activeStageFilter;
+
           tbody.innerHTML = \`
             <tr>
               <td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">
-                <div style="font-size:15px;font-weight:600;margin-bottom:6px">No leads found in this view</div>
-                <div style="font-size:12px">Try clearing filters or click <b>"+ New Lead"</b> or <b>"Seed Sample Leads"</b> above to populate Firestore.</div>
+                <div style="font-size:15px;font-weight:600;margin-bottom:6px">No leads found with status "\${filterLabel}"</div>
+                <div style="font-size:12px;margin-bottom:14px">Try selecting a different status from the dropdown filter or add a new lead to Firestore.</div>
+                <button type="button" class="crm-btn crm-btn-secondary" id="crm-reset-filter-btn" style="padding:6px 14px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
+                  <span>↺</span> Show All Statuses
+                </button>
               </td>
             </tr>
           \`;
+          const resetBtn = document.getElementById('crm-reset-filter-btn');
+          if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+              if (statusDropdown) statusDropdown.value = 'ALL';
+              activeStatusDropdownFilter = 'ALL';
+              activeStageFilter = 'ALL';
+              filterTabs.forEach(t => t.classList.remove('active'));
+              const allTab = document.querySelector('.crm-stage-tab[data-stage="ALL"]');
+              if (allTab) allTab.classList.add('active');
+              renderTable();
+            });
+          }
           return;
         }
 
@@ -767,6 +900,19 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
 
           const val = Number(lead.value || 0);
           const st = lead.status || 'NEW';
+
+          let statusCategory = 'New';
+          let statusBadgeClass = 'crm-badge-new';
+          if (st === 'CONVERTED' || st === 'WON') {
+            statusCategory = 'Converted';
+            statusBadgeClass = 'crm-badge-converted';
+          } else if (st === 'LOST') {
+            statusCategory = 'Lost';
+            statusBadgeClass = 'crm-badge-lost';
+          } else if (st !== 'NEW') {
+            statusCategory = 'In-Progress';
+            statusBadgeClass = 'crm-badge-progress';
+          }
 
           rowsHtml += \`
             <tr id="lead-row-\${lead.id}">
@@ -789,15 +935,26 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
                 <span class="crm-score-pill \${scoreClass}">\${score >= 80 ? '🔥 ' : ''}\${score}/100</span>
               </td>
               <td>
-                <select class="crm-status-select" data-id="\${lead.id}">
-                  <option value="NEW" \${st === 'NEW' ? 'selected' : ''}>NEW</option>
-                  <option value="RESEARCHED" \${st === 'RESEARCHED' ? 'selected' : ''}>RESEARCHED</option>
-                  <option value="CONTACTED" \${st === 'CONTACTED' ? 'selected' : ''}>CONTACTED</option>
-                  <option value="QUALIFIED" \${st === 'QUALIFIED' ? 'selected' : ''}>QUALIFIED</option>
-                  <option value="PROPOSAL" \${st === 'PROPOSAL' ? 'selected' : ''}>PROPOSAL</option>
-                  <option value="WON" \${st === 'WON' ? 'selected' : ''}>WON</option>
-                  <option value="LOST" \${st === 'LOST' ? 'selected' : ''}>LOST</option>
-                </select>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <span class="pill \${statusBadgeClass}" style="font-size:10px;padding:2px 8px;width:fit-content;font-weight:700;border-radius:4px">
+                    \${statusCategory}
+                  </span>
+                  <select class="crm-status-select" data-id="\${lead.id}">
+                    <optgroup label="Core Status">
+                      <option value="NEW" \${st === 'NEW' ? 'selected' : ''}>New</option>
+                      <option value="IN_PROGRESS" \${st === 'IN_PROGRESS' ? 'selected' : ''}>In-Progress</option>
+                      <option value="CONVERTED" \${st === 'CONVERTED' || st === 'WON' ? 'selected' : ''}>Converted</option>
+                      <option value="LOST" \${st === 'LOST' ? 'selected' : ''}>Lost</option>
+                    </optgroup>
+                    <optgroup label="Pipeline Stages">
+                      <option value="RESEARCHED" \${st === 'RESEARCHED' ? 'selected' : ''}>Researched</option>
+                      <option value="CONTACTED" \${st === 'CONTACTED' ? 'selected' : ''}>Contacted</option>
+                      <option value="QUALIFIED" \${st === 'QUALIFIED' ? 'selected' : ''}>Qualified</option>
+                      <option value="PROPOSAL" \${st === 'PROPOSAL' ? 'selected' : ''}>Proposal</option>
+                      <option value="WON" \${st === 'WON' ? 'selected' : ''}>Won</option>
+                    </optgroup>
+                  </select>
+                </div>
               </td>
               <td style="text-align:right">
                 <div style="display:inline-flex;gap:6px;align-items:center">
@@ -962,13 +1119,58 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         searchInput.addEventListener('input', renderTable);
       }
 
+      // Status dropdown filter event handler ('ALL', 'NEW', 'IN_PROGRESS', 'CONVERTED')
+      if (statusDropdown) {
+        statusDropdown.addEventListener('change', (e) => {
+          activeStatusDropdownFilter = e.target.value;
+
+          // Sync the stage tabs active state with the dropdown
+          filterTabs.forEach(t => t.classList.remove('active'));
+          if (activeStatusDropdownFilter === 'NEW') {
+            const newTab = document.querySelector('.crm-stage-tab[data-stage="NEW"]');
+            if (newTab) newTab.classList.add('active');
+            activeStageFilter = 'NEW';
+          } else if (activeStatusDropdownFilter === 'CONVERTED') {
+            const wonTab = document.querySelector('.crm-stage-tab[data-stage="WON"]');
+            if (wonTab) wonTab.classList.add('active');
+            activeStageFilter = 'WON';
+          } else if (activeStatusDropdownFilter === 'ALL') {
+            const allTab = document.querySelector('.crm-stage-tab[data-stage="ALL"]');
+            if (allTab) allTab.classList.add('active');
+            activeStageFilter = 'ALL';
+          } else {
+            // IN_PROGRESS: keep general filter active
+            activeStageFilter = 'ALL';
+          }
+
+          renderTable();
+        });
+      }
+
       // Stage filter tabs
       const filterTabs = document.querySelectorAll('.crm-stage-tab');
       filterTabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
           filterTabs.forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
-          activeStageFilter = tab.getAttribute('data-stage') || 'ALL';
+          const stage = tab.getAttribute('data-stage') || 'ALL';
+          activeStageFilter = stage;
+
+          // Sync dropdown filter
+          if (stage === 'NEW') {
+            activeStatusDropdownFilter = 'NEW';
+            if (statusDropdown) statusDropdown.value = 'NEW';
+          } else if (stage === 'WON') {
+            activeStatusDropdownFilter = 'CONVERTED';
+            if (statusDropdown) statusDropdown.value = 'CONVERTED';
+          } else if (['RESEARCHED', 'CONTACTED', 'QUALIFIED', 'PROPOSAL'].includes(stage)) {
+            activeStatusDropdownFilter = 'IN_PROGRESS';
+            if (statusDropdown) statusDropdown.value = 'IN_PROGRESS';
+          } else if (stage === 'ALL') {
+            activeStatusDropdownFilter = 'ALL';
+            if (statusDropdown) statusDropdown.value = 'ALL';
+          }
+
           renderTable();
         });
       });
