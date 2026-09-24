@@ -291,7 +291,36 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         border: 1px solid #263654;
         border-radius: 8px;
         padding: 4px 10px;
-        width: min(280px, 100%);
+        width: min(340px, 100%);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .crm-search-box:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      }
+      .crm-search-clear-btn {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 0 4px;
+        font-size: 16px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s ease;
+        margin: 0;
+      }
+      .crm-search-clear-btn:hover {
+        color: #f87171;
+      }
+      .crm-search-highlight {
+        background: rgba(59, 130, 246, 0.35);
+        color: #60a5fa;
+        font-weight: 700;
+        padding: 0 2px;
+        border-radius: 3px;
       }
       .crm-badge-new {
         background: rgba(56, 189, 248, 0.15) !important;
@@ -522,10 +551,21 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
             </select>
           </div>
           <div class="crm-search-box">
-            <span>🔍</span>
-            <input type="text" id="crm-search-input" placeholder="Search company, contact, signal...">
+            <span style="font-size:14px;color:#64748b" aria-hidden="true">🔍</span>
+            <input type="text" id="crm-search-input" placeholder="Search client name or company..." aria-label="Search leads by client name or company" autocomplete="off">
+            <button type="button" id="crm-search-clear" class="crm-search-clear-btn" style="display:none;" title="Clear search (Esc)" aria-label="Clear search input">&times;</button>
           </div>
         </div>
+      </div>
+
+      <!-- Active Search Status Bar -->
+      <div id="crm-search-status-bar" style="display:none;align-items:center;justify-content:space-between;background:rgba(30,41,59,0.7);border:1px solid #202e4c;border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#94a3b8">
+        <div>
+          <span>Matching <b id="crm-search-match-count" style="color:#60a5fa">0</b> lead(s) for "<span id="crm-search-query-text" style="color:#f8fafc;font-weight:600"></span>" by client name or company</span>
+        </div>
+        <button type="button" id="crm-search-status-clear" style="background:none;border:none;color:#60a5fa;cursor:pointer;font-size:11px;font-weight:600;padding:2px 6px;text-decoration:underline">
+          Clear Search
+        </button>
       </div>
 
       <div class="table-wrap">
@@ -659,6 +699,11 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
 
       const tbody = document.getElementById('crm-leads-tbody');
       const searchInput = document.getElementById('crm-search-input');
+      const searchClearBtn = document.getElementById('crm-search-clear');
+      const searchStatusBar = document.getElementById('crm-search-status-bar');
+      const searchMatchCount = document.getElementById('crm-search-match-count');
+      const searchQueryText = document.getElementById('crm-search-query-text');
+      const searchStatusClear = document.getElementById('crm-search-status-clear');
       const statusDropdown = document.getElementById('crm-status-filter-dropdown');
       const syncText = document.getElementById('crm-sync-text');
       const modal = document.getElementById('crm-lead-modal');
@@ -849,13 +894,37 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           filtered = filtered.filter(l => (l.status || 'NEW') === activeStageFilter);
         }
 
+        // Filter leads by client name (contactName) or company (companyName)
         if (queryTerm) {
-          filtered = filtered.filter(l => 
-            (l.companyName || '').toLowerCase().includes(queryTerm) ||
-            (l.contactName || '').toLowerCase().includes(queryTerm) ||
-            (l.email || '').toLowerCase().includes(queryTerm) ||
-            (l.signal || '').toLowerCase().includes(queryTerm)
-          );
+          filtered = filtered.filter(l => {
+            const company = (l.companyName || '').toLowerCase();
+            const contact = (l.contactName || '').toLowerCase();
+            const email = (l.email || '').toLowerCase();
+            const signal = (l.signal || '').toLowerCase();
+            return contact.includes(queryTerm) || company.includes(queryTerm) || email.includes(queryTerm) || signal.includes(queryTerm);
+          });
+        }
+
+        // Update search feedback and clear buttons
+        if (searchClearBtn) {
+          searchClearBtn.style.display = queryTerm ? 'inline-flex' : 'none';
+        }
+        if (searchStatusBar) {
+          if (queryTerm) {
+            searchStatusBar.style.display = 'flex';
+            if (searchMatchCount) searchMatchCount.innerText = filtered.length;
+            if (searchQueryText) searchQueryText.innerText = queryTerm;
+          } else {
+            searchStatusBar.style.display = 'none';
+          }
+        }
+
+        function highlightQuery(text, query) {
+          if (!query || !text) return escapeHtml(text || '');
+          const escaped = escapeHtml(text || '');
+          const clean = query.replace(/[.*+?^\${}()|[\]\\\\]/g, '\\\\$&');
+          const regex = new RegExp('(' + clean + ')', 'gi');
+          return escaped.replace(regex, '<mark class="crm-search-highlight">$1</mark>');
         }
 
         if (filtered.length === 0) {
@@ -865,17 +934,53 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           else if (activeStatusDropdownFilter === 'CONVERTED') filterLabel = 'Converted';
           else if (activeStageFilter !== 'ALL') filterLabel = activeStageFilter;
 
-          tbody.innerHTML = \`
-            <tr>
-              <td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">
-                <div style="font-size:15px;font-weight:600;margin-bottom:6px">No leads found with status "\${filterLabel}"</div>
-                <div style="font-size:12px;margin-bottom:14px">Try selecting a different status from the dropdown filter or add a new lead to Firestore.</div>
-                <button type="button" class="crm-btn crm-btn-secondary" id="crm-reset-filter-btn" style="padding:6px 14px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
-                  <span>↺</span> Show All Statuses
-                </button>
-              </td>
-            </tr>
-          \`;
+          if (queryTerm) {
+            tbody.innerHTML = \`
+              <tr>
+                <td colspan="6" style="text-align:center;padding:36px 20px;color:#94a3b8">
+                  <div style="font-size:26px;margin-bottom:8px">🔍</div>
+                  <div style="font-size:15px;font-weight:600;margin-bottom:6px;color:#f1f5f9">
+                    No leads found matching "\${escapeHtml(queryTerm)}"
+                  </div>
+                  <div style="font-size:12px;margin-bottom:14px;color:#94a3b8;max-width:440px;margin-left:auto;margin-right:auto">
+                    No records match the client name or company name in \${filterLabel !== 'this view' ? 'the "' + filterLabel + '" status' : 'the pipeline'}.
+                  </div>
+                  <div style="display:inline-flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <button type="button" class="crm-btn crm-btn-secondary" id="crm-clear-search-btn" style="padding:6px 14px;font-size:12px">
+                      Clear Search Query
+                    </button>
+                    \${activeStatusDropdownFilter !== 'ALL' || activeStageFilter !== 'ALL' ? \`
+                    <button type="button" class="crm-btn crm-btn-secondary" id="crm-reset-filter-btn" style="padding:6px 14px;font-size:12px">
+                      Show All Statuses
+                    </button>\` : ''}
+                  </div>
+                </td>
+              </tr>
+            \`;
+            const clearSearchBtn = document.getElementById('crm-clear-search-btn');
+            if (clearSearchBtn) {
+              clearSearchBtn.addEventListener('click', () => {
+                if (searchInput) {
+                  searchInput.value = '';
+                  searchInput.focus();
+                }
+                renderTable();
+              });
+            }
+          } else {
+            tbody.innerHTML = \`
+              <tr>
+                <td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">
+                  <div style="font-size:15px;font-weight:600;margin-bottom:6px">No leads found with status "\${filterLabel}"</div>
+                  <div style="font-size:12px;margin-bottom:14px">Try selecting a different status from the dropdown filter or add a new lead to Firestore.</div>
+                  <button type="button" class="crm-btn crm-btn-secondary" id="crm-reset-filter-btn" style="padding:6px 14px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
+                    <span>↺</span> Show All Statuses
+                  </button>
+                </td>
+              </tr>
+            \`;
+          }
+
           const resetBtn = document.getElementById('crm-reset-filter-btn');
           if (resetBtn) {
             resetBtn.addEventListener('click', () => {
@@ -914,12 +1019,15 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
             statusBadgeClass = 'crm-badge-progress';
           }
 
+          const companyDisplay = highlightQuery(lead.companyName || 'Untitled Company', queryTerm);
+          const contactDisplay = highlightQuery(lead.contactName || 'No contact', queryTerm);
+
           rowsHtml += \`
             <tr id="lead-row-\${lead.id}">
               <td>
-                <div style="font-weight:700;color:#f1f5f9;font-size:14px">\${escapeHtml(lead.companyName || 'Untitled Company')}</div>
+                <div style="font-weight:700;color:#f1f5f9;font-size:14px">\${companyDisplay}</div>
                 <div style="font-size:12px;color:#94a3b8;margin-top:2px">
-                  <span>\${escapeHtml(lead.contactName || 'No contact')}</span>
+                  <span>\${contactDisplay}</span>
                   \${lead.email ? ' · <a href="mailto:' + escapeHtml(lead.email) + '" style="color:#60a5fa;text-decoration:none">' + escapeHtml(lead.email) + '</a>' : ''}
                 </div>
               </td>
@@ -1114,10 +1222,47 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
         }
       }
 
-      // Event handlers
+      // Search input event handlers for client name & company
       if (searchInput) {
         searchInput.addEventListener('input', renderTable);
+        searchInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            searchInput.value = '';
+            renderTable();
+          }
+        });
       }
+
+      if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', () => {
+          if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+          }
+          renderTable();
+        });
+      }
+
+      if (searchStatusClear) {
+        searchStatusClear.addEventListener('click', () => {
+          if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+          }
+          renderTable();
+        });
+      }
+
+      // Quick slash '/' shortcut to focus search input
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+          }
+        }
+      });
 
       // Status dropdown filter event handler ('ALL', 'NEW', 'IN_PROGRESS', 'CONVERTED')
       if (statusDropdown) {

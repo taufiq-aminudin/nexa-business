@@ -95,22 +95,34 @@ app.get('/api/health', (req, res) => {
 // CRM Leads & Metrics endpoints for centralized dashboard
 app.get('/api/crm/leads', (req: Request, res: Response) => {
   const leads = dbAll('leads');
+  const search = String(req.query.search || '').trim().toLowerCase();
+
+  let mapped = leads.map(l => ({
+    id: String(l.id),
+    companyName: l.company_name || findCompanyName(l.company_id || 0) || 'Prospective Partner',
+    contactName: findContact(l.contact_id || 0)?.name || 'Direct Executive',
+    email: l.email || findContact(l.contact_id || 0)?.email || '',
+    phone: l.phone || findContact(l.contact_id || 0)?.phone || '',
+    status: l.status || 'NEW',
+    value: Number(l.estimated_value || l.value || 25000),
+    signal: l.signal || 'High growth expansion indicator',
+    score: Number(l.score || 80),
+    notes: l.notes || '',
+    createdAt: l.created_at || new Date().toISOString()
+  }));
+
+  if (search) {
+    mapped = mapped.filter(l =>
+      l.contactName.toLowerCase().includes(search) ||
+      l.companyName.toLowerCase().includes(search) ||
+      l.email.toLowerCase().includes(search)
+    );
+  }
+
   res.json({
     status: 'ok',
-    count: leads.length,
-    leads: leads.map(l => ({
-      id: String(l.id),
-      companyName: l.company_name || findCompanyName(l.company_id || 0) || 'Prospective Partner',
-      contactName: findContact(l.contact_id || 0)?.name || 'Direct Executive',
-      email: l.email || findContact(l.contact_id || 0)?.email || '',
-      phone: l.phone || findContact(l.contact_id || 0)?.phone || '',
-      status: l.status || 'NEW',
-      value: Number(l.estimated_value || l.value || 25000),
-      signal: l.signal || 'High growth expansion indicator',
-      score: Number(l.score || 80),
-      notes: l.notes || '',
-      createdAt: l.created_at || new Date().toISOString()
-    }))
+    count: mapped.length,
+    leads: mapped
   });
 });
 
