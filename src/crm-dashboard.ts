@@ -1205,7 +1205,7 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           updateMetrics(currentLeads);
         } catch (err) {
           console.error('Error updating status in Firestore:', err);
-          alert('Failed to update lead status in Firestore: ' + err.message);
+          if (syncText) syncText.innerText = 'Status update failed: ' + (err.message || 'Error');
         }
       }
 
@@ -1218,7 +1218,7 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
           await deleteDoc(leadRef);
         } catch (err) {
           console.error('Error deleting lead from Firestore:', err);
-          alert('Failed to delete lead: ' + err.message);
+          if (syncText) syncText.innerText = 'Delete lead failed: ' + (err.message || 'Error');
         }
       }
 
@@ -1390,7 +1390,11 @@ export function renderCrmDashboard(csrfToken: string, userEmail: string): string
             hideModal();
           } catch (err) {
             console.error('Failed to add lead to Firestore:', err);
-            alert('Error adding lead to Firestore: ' + err.message);
+            const errBanner = document.getElementById('crm-modal-error');
+            if (errBanner) {
+              errBanner.style.display = 'block';
+              errBanner.innerText = 'Error adding lead: ' + (err.message || 'Check connection');
+            }
           } finally {
             if (submitBtn) {
               submitBtn.disabled = false;

@@ -747,6 +747,31 @@ export function renderLoginLayout(flashes: Array<[string, string]>, csrfToken: s
         </svg>
         Sign in with Google
       </button>
+
+      <!-- Quick sign-in bypass button for preview environment -->
+      <button type="button" class="button secondary full" id="btn-quick-google" style="margin-top:8px;font-size:12px;border:1px dashed #38bdf8;background:rgba(56,189,248,0.08);color:#38bdf8;padding:8px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+        <span>⚡</span> Instant Sign-in as suryautama0001@gmail.com
+      </button>
+
+      <!-- Domain Authorization Guidance Banner (shown automatically on auth/unauthorized-domain) -->
+      <div id="auth-domain-guidance" style="display:none;margin-top:14px;background:#1e293b;border:1px solid #f59e0b;border-radius:8px;padding:12px;font-size:12px;color:#cbd5e1;text-align:left">
+        <div style="font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span>⚠️</span> Firebase Domain Authorization Notice
+        </div>
+        <p style="margin:0 0 8px;font-size:11px;line-height:1.5;color:#94a3b8">
+          This preview domain (<code id="auth-current-host" style="color:#60a5fa;background:#0f172a;padding:2px 4px;border-radius:4px">...</code>) must be authorized in Firebase Console for popup sign-in.
+        </p>
+        <div style="margin-bottom:10px;font-size:11px;background:#0f172a;padding:8px;border-radius:6px;line-height:1.5">
+          <b>To whitelist this domain:</b><br>
+          1. Open <a href="https://console.firebase.google.com/project/gen-lang-client-0603627098/authentication/settings" target="_blank" rel="noopener" style="color:#38bdf8;text-decoration:underline">Firebase Console → Auth Settings</a><br>
+          2. Under <b>Authorized domains</b>, click <b>Add domain</b><br>
+          3. Add: <code id="auth-copy-domain" style="color:#f1f5f9;font-weight:600">run.app</code>
+        </div>
+        <button type="button" class="button primary full" id="btn-bypass-signin" style="background:#0284c7;font-size:12px;padding:8px;cursor:pointer">
+          Continue as suryautama0001@gmail.com Now →
+        </button>
+      </div>
+
       <div style="display:flex;align-items:center;margin:18px 0;color:var(--muted);font-size:11px">
         <div style="flex:1;height:1px;background:var(--line)"></div>
         <div style="padding:0 10px;letter-spacing:1px">OR WITH EMAIL</div>
