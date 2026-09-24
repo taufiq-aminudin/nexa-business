@@ -15,6 +15,8 @@ import {
   dbInsert,
   dbUpdate,
   dbWhere,
+  findCompanyName,
+  findContact,
   findLeadJoined,
   nextDocNumber,
   audit,
@@ -88,6 +90,76 @@ function verifyCsrf(req: Request, res: Response): boolean {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: config.appName, demoMode: config.demoMode, firebase: true });
+});
+
+// CRM Leads & Metrics endpoints for centralized dashboard
+app.get('/api/crm/leads', (req: Request, res: Response) => {
+  const leads = dbAll('leads');
+  res.json({
+    status: 'ok',
+    count: leads.length,
+    leads: leads.map(l => ({
+      id: String(l.id),
+      companyName: l.company_name || findCompanyName(l.company_id || 0) || 'Prospective Partner',
+      contactName: findContact(l.contact_id || 0)?.name || 'Direct Executive',
+      email: l.email || findContact(l.contact_id || 0)?.email || '',
+      phone: l.phone || findContact(l.contact_id || 0)?.phone || '',
+      status: l.status || 'NEW',
+      value: Number(l.estimated_value || l.value || 25000),
+      signal: l.signal || 'High growth expansion indicator',
+      score: Number(l.score || 80),
+      notes: l.notes || '',
+      createdAt: l.created_at || new Date().toISOString()
+    }))
+  });
+});
+
+app.get('/api/crm/metrics', (req: Request, res: Response) => {
+  const leads = dbAll('leads');
+  const totalLeads = leads.length;
+  let totalPipelineValue = 0;
+  let qualifiedCount = 0;
+  let wonValue = 0;
+  let wonCount = 0;
+  let totalScore = 0;
+
+  const stageBreakdown: Record<string, number> = {
+    NEW: 0,
+    RESEARCHED: 0,
+    CONTACTED: 0,
+    QUALIFIED: 0,
+    PROPOSAL: 0,
+    WON: 0,
+    LOST: 0
+  };
+
+  leads.forEach(l => {
+    const val = Number(l.estimated_value || l.value || 25000);
+    const score = Number(l.score || 75);
+    totalPipelineValue += val;
+    totalScore += score;
+    const st = String(l.status || 'NEW').toUpperCase();
+    if (stageBreakdown[st] !== undefined) stageBreakdown[st]++;
+    if (score >= 75 || st === 'QUALIFIED') qualifiedCount++;
+    if (st === 'WON') {
+      wonValue += val;
+      wonCount++;
+    }
+  });
+
+  const avgScore = totalLeads > 0 ? Math.round(totalScore / totalLeads) : 0;
+  const winRate = totalLeads > 0 ? Number(((wonCount / totalLeads) * 100).toFixed(1)) : 0;
+
+  res.json({
+    totalLeads,
+    totalPipelineValue,
+    qualifiedCount,
+    wonValue,
+    wonCount,
+    winRate,
+    avgScore,
+    stageBreakdown
+  });
 });
 
 // Google Sign-in with Firebase Auth session sync

@@ -65,7 +65,9 @@ export function getFirebaseClientScript(): string {
       
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
+      const db = firebaseConfig.firestoreDatabaseId 
+        ? getFirestore(app, firebaseConfig.firestoreDatabaseId) 
+        : getFirestore(app);
 
       window._nexaFirebase = { app, auth, db };
 

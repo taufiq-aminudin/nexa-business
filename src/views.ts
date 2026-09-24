@@ -13,6 +13,7 @@ import {
 } from './db.js';
 import { config } from './config.js';
 import { getFirebaseClientScript } from './firebase.js';
+import { renderCrmDashboard } from './crm-dashboard.js';
 
 export function escapeHtml(v: any): string {
   if (v === null || v === undefined) return '';
@@ -162,52 +163,34 @@ export function pipelineHtml(full = false): string {
   return html;
 }
 
-export function renderPageContent(page: string, csrfToken: string): string {
+export function renderPageContent(page: string, csrfToken: string, userEmail?: string): string {
   const companies = dbSortAsc(dbAll('companies'), 'name');
   const contacts = dbSortAsc(dbAll('contacts'), 'name');
   const leads = dbSortDesc(dbAll('leads'));
 
   if (page === 'dashboard') {
-    const leadN = dbCount('leads');
-    const qualified = dbCount('leads', (r) => (r.status ?? '') === 'QUALIFIED');
-    const meetings = dbCount('appointments');
-    const proposals = dbCount('documents', (r) => ['PROPOSAL', 'QUOTATION'].includes(r.doc_type ?? ''));
-    const revenue = dbSum('opportunities', 'value', (r) => (r.stage ?? '') === 'WON');
-
-    return `<div class="grid stats">
-      ${cardStat('Leads', String(leadN), 'All business types')}
-      ${cardStat('Qualified', String(qualified), 'Internal priority')}
-      ${cardStat('Meetings', String(meetings), 'Scheduled')}
-      ${cardStat('Proposals', String(proposals), 'Draft + issued')}
-      ${cardStat('Won Pipeline', money(revenue), 'Closed value')}
-    </div>
+    return `
+    ${renderCrmDashboard(csrfToken, userEmail || '')}
     <div class="grid two">
       <section class="panel" id="panel-quick-mission">
         <div class="panel-head">
-          <h2>AI Mission</h2>
-          <a class="button" href="?page=missions">Open</a>
+          <h2>Autonomous AI Business Mission</h2>
+          <a class="button" href="?page=missions">All Missions</a>
         </div>
         <form method="post" action="?action=create_mission">
           ${hiddenCsrf(csrfToken)}
-          <input name="title" placeholder="Mission title" required>
-          <textarea name="instruction" placeholder="e.g. Find manufacturing companies currently hiring and prepare recruitment outreach" required></textarea>
-          <button class="button primary" id="btn-create-mission">Create Mission</button>
+          <input name="title" placeholder="Mission title e.g. Discover High-Growth Logistics Accounts" required>
+          <textarea name="instruction" placeholder="e.g. Find expanding commercial enterprises in need of enterprise software, research active key executives, and prepare outreach strategy" required></textarea>
+          <button class="button primary" id="btn-create-mission">Launch Search-Grounded Mission</button>
         </form>
       </section>
       <section class="panel" id="panel-pipeline">
         <div class="panel-head">
-          <h2>Opportunity Pipeline</h2>
-          <a class="button" href="?page=opportunities">View</a>
+          <h2>Opportunity Stages &amp; Pipeline</h2>
+          <a class="button" href="?page=opportunities">View All Deals</a>
         </div>
         ${pipelineHtml()}
       </section>
-    </div>
-    <div class="panel" id="panel-recent-leads">
-      <div class="panel-head">
-        <h2>Recent Leads</h2>
-        <a class="button" href="?page=leads">Manage</a>
-      </div>
-      ${leadTable(leads.slice(0, 8), csrfToken)}
     </div>`;
   }
 
@@ -727,7 +710,7 @@ export function renderAppLayout(params: {
         </div>
       </header>
       ${flashHtml}
-      ${renderPageContent(page, csrfToken)}
+      ${renderPageContent(page, csrfToken, userEmail)}
     </main>
   </div>
   ${getFirebaseClientScript()}
