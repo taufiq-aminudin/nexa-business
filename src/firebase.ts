@@ -136,7 +136,7 @@ export function getFirebaseClientScript(): string {
         quickBtn.addEventListener("click", () => {
           quickBtn.disabled = true;
           quickBtn.innerText = "Signing in...";
-          executeDirectSignIn("suryautama0001@gmail.com", "Surya Utama", "suryautama-user");
+          executeDirectSignIn("agungkuncoro0122@gmail.com", "Agung Kuncoro", "agungkuncoro-user");
         });
       }
 
@@ -146,7 +146,7 @@ export function getFirebaseClientScript(): string {
         bypassBtn.addEventListener("click", () => {
           bypassBtn.disabled = true;
           bypassBtn.innerText = "Continuing to Dashboard...";
-          executeDirectSignIn("suryautama0001@gmail.com", "Surya Utama", "suryautama-user");
+          executeDirectSignIn("agungkuncoro0122@gmail.com", "Agung Kuncoro", "agungkuncoro-user");
         });
       }
 

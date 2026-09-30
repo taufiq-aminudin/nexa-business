@@ -680,6 +680,9 @@ export function renderAppLayout(params: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${escapeHtml(config.appName)} — ${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="AI Business Acquisition &amp; Automation Platform for CRM, mission orchestration, and outreach generation with Firebase Auth, Cloud Firestore, and Google Search Grounding.">
+  <meta property="og:title" content="${escapeHtml(config.appName)}">
+  <meta property="og:description" content="AI Business Acquisition &amp; Automation Platform for CRM, mission orchestration, and outreach generation with Firebase Auth, Cloud Firestore, and Google Search Grounding.">
   <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
@@ -730,6 +733,9 @@ export function renderLoginLayout(flashes: Array<[string, string]>, csrfToken: s
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NEXA Business AI — Login</title>
+  <meta name="description" content="AI Business Acquisition &amp; Automation Platform for CRM, mission orchestration, and outreach generation with Firebase Auth, Cloud Firestore, and Google Search Grounding.">
+  <meta property="og:title" content="NEXA Business AI — Login">
+  <meta property="og:description" content="AI Business Acquisition &amp; Automation Platform for CRM, mission orchestration, and outreach generation with Firebase Auth, Cloud Firestore, and Google Search Grounding.">
   <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body class="login-body">
@@ -750,7 +756,7 @@ export function renderLoginLayout(flashes: Array<[string, string]>, csrfToken: s
 
       <!-- Quick sign-in bypass button for preview environment -->
       <button type="button" class="button secondary full" id="btn-quick-google" style="margin-top:8px;font-size:12px;border:1px dashed #38bdf8;background:rgba(56,189,248,0.08);color:#38bdf8;padding:8px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">
-        <span>⚡</span> Instant Sign-in as suryautama0001@gmail.com
+        <span>⚡</span> Instant Sign-in as agungkuncoro0122@gmail.com
       </button>
 
       <!-- Domain Authorization Guidance Banner (shown automatically on auth/unauthorized-domain) -->
@@ -768,7 +774,7 @@ export function renderLoginLayout(flashes: Array<[string, string]>, csrfToken: s
           3. Add: <code id="auth-copy-domain" style="color:#f1f5f9;font-weight:600">run.app</code>
         </div>
         <button type="button" class="button primary full" id="btn-bypass-signin" style="background:#0284c7;font-size:12px;padding:8px;cursor:pointer">
-          Continue as suryautama0001@gmail.com Now →
+          Continue as agungkuncoro0122@gmail.com Now →
         </button>
       </div>
 
